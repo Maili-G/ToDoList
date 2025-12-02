@@ -9,12 +9,15 @@ import org.springframework.ui.Model
 import org.springframework.web.bind.annotation.*
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import jakarta.servlet.http.HttpServletRequest
+import org.ldv.AppStarter_ToDoList.service.AuditLogService
 
 @Controller
 @RequestMapping("/tasks")
 class TaskController(
     private val taskService: TaskService,
-    private val userService: UserService
+    private val userService: UserService,
+    private val auditLogService: AuditLogService
 ) {
 
     @GetMapping
@@ -31,7 +34,8 @@ class TaskController(
         @RequestParam title: String,
         @RequestParam(required = false) description: String?,
         @RequestParam(required = false) dueDate: String?,
-        authentication: Authentication
+        authentication: Authentication,
+        request: HttpServletRequest
     ): String {
         val user = userService.findByUsername(authentication.name)!!
 
@@ -41,8 +45,12 @@ class TaskController(
 
         taskService.createTask(title, description, parsedDueDate, user)
 
-        // Journalisation à implémenter par les étudiants ici plus tard
-        // (appel à un futur AuditLogService)
+        auditLogService.log(
+            username = user.username,
+            action = "CREATE_TASK",
+            details = "Création de la tâche : $title",
+            request = request
+        )
 
         return "redirect:/tasks"
     }
@@ -54,7 +62,8 @@ class TaskController(
         @RequestParam(required = false) description: String?,
         @RequestParam status: String,
         @RequestParam(required = false) dueDate: String?,
-        authentication: Authentication
+        authentication: Authentication,
+        request: HttpServletRequest
     ): String {
         val task = taskService.getTaskById(id) ?: return "redirect:/tasks"
 
@@ -74,7 +83,12 @@ class TaskController(
             parsedDueDate
         )
 
-        // Journalisation à implémenter par les étudiants ici plus tard
+        auditLogService.log(
+            username = authentication.name,
+            action = "UPDATE_TASK",
+            details = "Modification tâche #$id (titre=$title, statut=$status)",
+            request = request
+        )
 
         return "redirect:/tasks"
     }
@@ -82,14 +96,20 @@ class TaskController(
     @PostMapping("/delete/{id}")
     fun deleteTask(
         @PathVariable id: Long,
-        authentication: Authentication
+        authentication: Authentication,
+        request: HttpServletRequest
     ): String {
         val task = taskService.getTaskById(id)
 
         if (task != null && task.user.username == authentication.name) {
             taskService.deleteTask(id)
 
-            // Journalisation à implémenter par les étudiants ici plus tard
+            auditLogService.log(
+                username = authentication.name,
+                action = "DELETE_TASK",
+                details = "Suppression tâche #$id",
+                request = request
+            )
         }
 
         return "redirect:/tasks"
