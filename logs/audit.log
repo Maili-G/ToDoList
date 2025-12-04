@@ -1,0 +1,5 @@
+2025-12-04 09:46:54,746 INFO  LOGIN user=admin ip=127.0.0.1
+2025-12-04 09:47:51,237 INFO  CREATE_TASK user=admin title="test" dueDate=2025-12-11T10:00
+2025-12-04 09:48:52,825 INFO  UPDATE_TASK user=admin taskId=1 title="test" status=IN_PROGRESS dueDate=2025-12-11T09:00
+2025-12-04 09:48:58,047 INFO  DELETE_TASK user=admin taskId=1
+2025-12-04 09:50:04,265 INFO  LOGOUT user=admin ip=127.0.0.1

@@ -11,6 +11,8 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import jakarta.servlet.http.HttpServletRequest
 import org.ldv.AppStarter_ToDoList.service.AuditLogService
+// AJOUT TP2 - import du logger SLF4J pour les logs techniques
+import org.slf4j.LoggerFactory
 
 @Controller
 @RequestMapping("/tasks")
@@ -20,10 +22,21 @@ class TaskController(
     private val auditLogService: AuditLogService
 ) {
 
+    // AJOUT TP2 - logger technique pour cette classe
+    private val logger = LoggerFactory.getLogger(TaskController::class.java)
+
+    // AJOUT TP2 - Logger d’audit dédié (redirigé vers audit.log)
+    private val auditLogger = LoggerFactory.getLogger("AUDIT")
+
     @GetMapping
     fun listTasks(authentication: Authentication, model: Model): String {
         val user = userService.findByUsername(authentication.name)!!
         val tasks = taskService.getUserTasks(user)
+
+        // AJOUT TP2 - log technique lors de l’affichage de la liste des tâches
+        logger.info("Affichage de la liste des tâches pour l'utilisateur {}",
+            user.username)
+
         model.addAttribute("tasks", tasks)
         model.addAttribute("username", user.username)
         return "tasks"
@@ -45,11 +58,28 @@ class TaskController(
 
         taskService.createTask(title, description, parsedDueDate, user)
 
+        // (journalisation d’audit déjà mise en place au TP1)
         auditLogService.log(
             username = user.username,
             action = "CREATE_TASK",
             details = "Création de la tâche : $title",
             request = request
+        )
+
+        // AJOUT TP2 - journalisation fichier : audit.log
+        auditLogger.info(
+            "CREATE_TASK user={} title=\"{}\" dueDate={}",
+            user.username,
+            title,
+            parsedDueDate
+        )
+
+        // AJOUT TP2 - log technique lors de la création d’une tâche
+        logger.info(
+            "Création d'une tâche pour l'utilisateur {} : titre=\"{}\", échéance={}",
+            user.username,
+            title,
+            parsedDueDate
         )
 
         return "redirect:/tasks"
@@ -68,6 +98,12 @@ class TaskController(
         val task = taskService.getTaskById(id) ?: return "redirect:/tasks"
 
         if (task.user.username != authentication.name) {
+            // AJOUT TP2 - log technique si un utilisateur tente de modifier une tâche qui ne lui appartient pas
+            logger.warn(
+                "Tentative de mise à jour non autorisée de la tâche {} par l'utilisateur {}",
+                id,
+                authentication.name
+            )
             return "redirect:/tasks"
         }
 
@@ -83,11 +119,32 @@ class TaskController(
             parsedDueDate
         )
 
+        // (journalisation d’audit déjà mise en place au TP1)
         auditLogService.log(
             username = authentication.name,
             action = "UPDATE_TASK",
             details = "Modification tâche #$id (titre=$title, statut=$status)",
             request = request
+        )
+
+        // AJOUT TP2 - audit fichier
+        auditLogger.info(
+            "UPDATE_TASK user={} taskId={} title=\"{}\" status={} dueDate={}",
+            authentication.name,
+            id,
+            title,
+            status,
+            parsedDueDate
+        )
+
+        // AJOUT TP2 - log technique lors de la mise à jour d’une tâche
+        logger.info(
+            "Mise à jour de la tâche {} par l'utilisateur {} : titre=\"{}\", statut= {}, échéance={}",
+            id,
+            authentication.name,
+            title,
+            status,
+            parsedDueDate
         )
 
         return "redirect:/tasks"
@@ -104,11 +161,33 @@ class TaskController(
         if (task != null && task.user.username == authentication.name) {
             taskService.deleteTask(id)
 
+            // (journalisation d’audit déjà mise en place au TP1)
             auditLogService.log(
                 username = authentication.name,
                 action = "DELETE_TASK",
                 details = "Suppression tâche #$id",
                 request = request
+            )
+
+            // AJOUT TP2 - audit fichier
+            auditLogger.info(
+                "DELETE_TASK user={} taskId={}",
+                authentication.name,
+                id
+            )
+
+            // AJOUT TP2 - log technique lors de la suppression d’une tâche
+            logger.info(
+                "Suppression de la tâche {} par l'utilisateur {}",
+                id,
+                authentication.name
+            )
+        } else {
+            // AJOUT TP2 - log technique en cas de tentative de suppression non autorisée
+            logger.warn(
+                "Tentative de suppression non autorisée de la tâche {} par l'utilisateur {}",
+                id,
+                authentication.name
             )
         }
 
